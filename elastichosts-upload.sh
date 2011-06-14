@@ -16,6 +16,8 @@ Options:
   -d DRIVE-UUID  UUID of existing drive to image (default: creates new drive)
   -n NAME        name for newly created drive (default: basename of FILENAME)
   -o OFFSET      byte offset from which to resume upload (default: 0)
+  -s             set drive claim:type parameter as 'shared' - allow multiple
+                 simultaneous mounts
   -z             input image is gzipped
 EOF
   exit 1
@@ -31,9 +33,10 @@ fi
 CHUNK=4194304
 GUNZIP=0
 OFFSET=0
+CLAIMTYPE=exclusive
 unset DRIVE
 
-while getopts c:d:n:o:z OPTION; do
+while getopts c:d:n:o:sz OPTION; do
   case "$OPTION" in
     c)
       case "$OPTARG" in
@@ -61,6 +64,9 @@ while getopts c:d:n:o:z OPTION; do
           ;;
       esac
       ;;
+    s)
+      CLAIMTYPE=shared
+      ;;
     z)
       GUNZIP=1
       ;;
@@ -86,7 +92,7 @@ EHAUTH="user = \"$EHAUTH\""
 
 if [ -n "$DRIVE" ]; then
   echo "Using existing drive $DRIVE"
-elif POSTDATA=`echo "name $NAME"; echo "size $SIZE"` \
+elif POSTDATA=`echo "name $NAME"; echo "size $SIZE"; echo "claim:type $CLAIMTYPE";` \
   && DRIVE=`curl --data-ascii "$POSTDATA" -K <(echo "$EHAUTH") -f -s \
                  -H 'Content-Type: text/plain' -H 'Expect:' \
                  "${EHURI}drives/create"` \
