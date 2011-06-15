@@ -81,7 +81,8 @@ shift $((OPTIND - 1))
 NAME="${NAME:-`basename "$1"`}"
 
 if [ $GUNZIP -gt 0 ]; then
-  SIZE=`gzip -lq "$1" | awk '{ print $2 }'` || die "$1: Not in gzip format"
+  SIZES=`gzip -lq "$1" ` || die "$1: Not in gzip format"
+  SIZE=`echo $SIZES | cut -f2 -d' '`
   [ "$SIZE" -gt `stat -L -c '%s' "$1"` ] || echo "$1: gzip reports original file size greater than compressed, may be in error" >&2
 else
   [ -f "$1" ] && SIZE=`stat -L -c '%s' "$1"`
