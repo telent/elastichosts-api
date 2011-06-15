@@ -82,6 +82,7 @@ NAME="${NAME:-`basename "$1"`}"
 
 if [ $GUNZIP -gt 0 ]; then
   SIZE=`gzip -lq "$1" | awk '{ print $2 }'` || die "$1: Not in gzip format"
+  [ "$SIZE" -gt `stat -L -c '%s' "$1"` ] || echo "$1: gzip reports original file size greater than compressed, may be in error" >&2
 else
   [ -f "$1" ] && SIZE=`stat -L -c '%s' "$1"`
   [ -b "$1" ] && SIZE=`blockdev --getsize64 "$1"`
@@ -119,6 +120,7 @@ Restart with '-d $DRIVE -o $((OFFSET*CHUNK))' to resume the upload
 EOF
     exit 1
   done
+  read -t 1 -n 1 a && die "Finished transmitting before end of file"
   echo " completed"
 }
 
