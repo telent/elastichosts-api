@@ -1,0 +1,17 @@
+# -*- yaml -*- mode
+
+# preferred availability zone
+zone:
+  lon-p
+
+# Your UUID and API key can be found at 
+# https://lon-p.elastichosts.com/accounts/profile
+# or equivalent page for other availability zones
+
+# The example data here is NOT REAL.  Don't forget to apply sensible 
+# file permissions to this file before substituting any that is!
+
+lon-p:
+  uri: https://api-lon-p.elastichosts.com:443/
+  uuid: b331b7a0-bdeb-11e0-9962-002215f8ed15
+  key: CThyTHX+EV6BYqiGxkQOizfJE+IjU

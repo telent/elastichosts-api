@@ -2,15 +2,12 @@
 
 require 'trollop'
 require 'patron'
-
-# here's the plan:
-# 1) test image for gzippedness
-# 2) if not zipped, pipe through gzip
-# 3) after uploading, call
-# POST	/drives/DRIVE/image/SOURCE/gunzip
+require 'yaml'
 
 opts=Trollop::options do
-  opt :uri, "Elastichosts URI endpoint", :default=>'https://api-lon-p.elastichosts.com:443/'
+  opt :config_file, "Configuration file", :short=>'f', :default=>"/etc/elastichosts-api.yml"
+  opt :zone, "Availability zone (overrides config file)", :type=>String
+  opt :uri, "Elastichosts URI endpoint (overrides config file)", :type=>String
   opt :verbose, "Show progress"
   # we default to a low compression level because we don't think there's
   # much gain to be had from compressing full parts of the disk, and
@@ -21,11 +18,22 @@ opts=Trollop::options do
   opt :debug1, "Show grisly details (not pretty, exposes secret information)"
 end
 
+if File.exist?(f=opts[:config_file]) then
+  preferences=YAML.load_file f
+  if p=preferences['zone'] then opts[:zone]||=p end
+  if p=preferences[opts[:zone]]['uri'] then opts[:uri]||=p end
+  if p=preferences[opts[:zone]]['uuid'] then $ehuser=p end
+  if p=preferences[opts[:zone]]['key'] then $ehpass=p end
+end
+opts[:zone]||='lon-p'
+opts[:uri]||='https://api-lon-p.elastichosts.com:443/'
+
 if e=ENV['EHAUTH']
   $ehuser,$ehpass=e.split(/:/)
-else
-  warn "EHAUTH environment variable is unset"
-  exit 1
+end
+
+unless $ehpass && $ehuser
+  raise "No API credentials set in either #{opts[:config_file]} or \$EHAUTH"
 end
 
 class Image
@@ -90,8 +98,7 @@ begin
   if i.zipped_uuid then
     opts[:verbose] and warn "created temporary image drive #{i.zipped_uuid}"
   else
-    warn "Drive creation failed"
-    exit 1
+    raise "Server returned \"#{r.status_line}\" - drive creation failed"
   end
   offset=0
   IO.popen("/bin/gzip -c -#{opts[:compression]} #{i.local_name}|dd obs=4M 2>/dev/null","r") do |f|
@@ -104,8 +111,7 @@ begin
                       'content-type'=>'application/octet-stream'
                     })
         unless r.status==204
-          warn "#{r.status_line} at offset #{offset}"
-          exit 1
+          raise "#{r.status_line} at offset #{offset}"
         end
         offset+=bytes.length
       rescue EOFError => e
