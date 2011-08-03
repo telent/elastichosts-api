@@ -34,10 +34,8 @@ class Image
   attr_accessor :uuid
   def initialize(n)
     @local_name=n
-    File.open(n) do |f|
-      @local_bytes=f.size
-      @local_zipped=true
-    end
+    @local_bytes=File.stat(n).size
+    @local_zipped=true
     @sem=Mutex.new
   end
   def basename 
