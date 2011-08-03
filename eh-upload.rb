@@ -11,15 +11,23 @@ require 'patron'
 
 opts=Trollop::options do
   opt :uri, "Elastichosts URI endpoint", :default=>'https://api-lon-p.elastichosts.com:443/'
-  opt :verbose, "Show progress"  
+  opt :verbose, "Show progress"
+  opt :compression, "Compression level 1-9 (1=faster, 9=smaller)",
+  :type => :int,:default=>2
+  opt :uuid, "Destination drive UUID (omit to create a new drive)",:type=>String
   opt :debug1, "Show grisly details (not pretty, exposes secret information)"
 end
 
-$ehuser,$ehpass=ENV['EHAUTH'].split(/:/)
+if e=ENV['EHAUTH']
+  $ehuser,$ehpass=e.split(/:/)
+else
+  warn "EHAUTH environment variable is unset"
+  exit 1
+end
 
-class Image 
+class Image
   attr_accessor :local_name,:local_bytes,:local_zipped
-  # we uplaod the image gzipped and then perform an API call to unzip when
+  # we upload the image gzipped and then perform an API call to unzip when
   # done.  This is the UID of the gzipped temporary image
   attr_accessor :zipped_uuid
   # and this is the real drive
@@ -85,7 +93,7 @@ begin
     exit 1
   end
   offset=0
-  IO.popen("/bin/gzip -c -9 #{i.local_name}|dd obs=4M 2>/dev/null","r") do |f|
+  IO.popen("/bin/gzip -c -#{opts[:compression]} #{i.local_name}|dd obs=4M 2>/dev/null","r") do |f|
     finished = false
     while not finished
       begin
@@ -105,15 +113,21 @@ begin
     end
   end
 
-  r=conn.post('drives/create',
-              "name #{i.basename}\nsize #{i.local_bytes}\nclaim:type exclusive",
-              headers)
-  ret=parse_response_body(r.body)
-  i.uuid=ret[:drive]
-  opts[:verbose] and warn "created final image drive #{i.uuid}"
-
   r=conn.post("drives/#{i.zipped_uuid}/set", "size #{offset}", headers)
+
+  if i.uuid then
+    opts[:verbose] and warn "unzipping to existing drive #{i.uuid}"
+  else
+    r=conn.post('drives/create',
+                "name #{i.basename}\nsize #{i.local_bytes}\nclaim:type exclusive",
+                headers)
+    ret=parse_response_body(r.body)
+    i.uuid=ret[:drive]
+    opts[:verbose] and warn "created final image drive #{i.uuid}"
+  end
+
   r=conn.post("drives/#{i.uuid}/image/#{i.zipped_uuid}/gunzip",'',headers)
+
   finished = false
   while not finished do
     r=conn.get("drives/#{i.uuid}/info")
