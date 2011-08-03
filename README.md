@@ -23,6 +23,6 @@ me, at least) to be faster
 
 Prerequisites: Ruby, Gembundler
 
-$ bundle install
-$ bundle exec ruby eh-upload.rb --help
+    $ bundle install
+    $ bundle exec ruby eh-upload.rb --help
 
