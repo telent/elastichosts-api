@@ -12,6 +12,9 @@ require 'patron'
 opts=Trollop::options do
   opt :uri, "Elastichosts URI endpoint", :default=>'https://api-lon-p.elastichosts.com:443/'
   opt :verbose, "Show progress"
+  # we default to a low compression level because we don't think there's
+  # much gain to be had from compressing full parts of the disk, and
+  # even gzip -1 can find runs of zeroes
   opt :compression, "Compression level 1-9 (1=faster, 9=smaller)",
   :type => :int,:default=>2
   opt :uuid, "Destination drive UUID (omit to create a new drive)",:type=>String
